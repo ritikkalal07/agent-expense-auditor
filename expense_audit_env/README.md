@@ -1,3 +1,11 @@
+---
+title: Expense Audit Env
+emoji: 📊
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 7860
+---
 # Expense Audit Environment 🧾
 
 An [OpenEnv](https://github.com/meta-pytorch/OpenEnv) environment that simulates **corporate expense report auditing** — a genuine, high-value real-world task where an AI agent reviews employee expense submissions for policy compliance, flags violations, and issues structured audit verdicts.
@@ -108,7 +116,7 @@ pip install -e .
 
 ```bash
 # Direct
-uvicorn server.app:app --host 0.0.0.0 --port 8000
+uvicorn server.app:app --host 0.0.0.0 --port 7860
 
 # Or via module
 python -m server.app
@@ -118,7 +126,7 @@ python -m server.app
 
 ```bash
 docker build -t expense-audit-env .
-docker run -p 8000:8000 expense-audit-env
+docker run -p 7860:7860 expense-audit-env
 ```
 
 ### Run baseline inference
@@ -127,7 +135,7 @@ docker run -p 8000:8000 expense-audit-env
 export API_BASE_URL="https://api.openai.com/v1"
 export OPENAI_API_KEY="sk-..."
 export MODEL_NAME="gpt-4o-mini"
-export SPACE_URL="http://localhost:8000"
+export SPACE_URL="http://localhost:7860"
 
 python inference.py
 ```
@@ -136,12 +144,12 @@ python inference.py
 
 ```bash
 # Reset with a specific task
-curl -X POST http://localhost:8000/reset \
+curl -X POST http://localhost:7860/reset \
   -H "Content-Type: application/json" \
   -d '{"seed": 42, "task": "basic_audit"}'
 
 # Take an action
-curl -X POST http://localhost:8000/step \
+curl -X POST http://localhost:7860/step \
   -H "Content-Type: application/json" \
   -d '{"action": {"action_type": "flag_violation", "item_id": "EXP-001", "violation_type": "over_limit", "reason": "Meal exceeds $75 limit"}}'
 ```
