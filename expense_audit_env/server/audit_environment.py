@@ -12,8 +12,7 @@ from uuid import uuid4
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from openenv.core.env_server.interfaces import Environment
-from openenv.core.env_server.types import Action, Observation, State
+from openenv.core import Action, Environment, Observation, State
 
 from models import AuditAction, AuditObservation, ExpenseReport, PolicyRule
 from server.scenarios import ReportAnnotation, generate_scenario

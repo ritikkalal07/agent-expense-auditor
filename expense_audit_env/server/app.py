@@ -50,7 +50,6 @@ app = FastAPI(
 )
 
 # Stateful environment instance (per-server singleton for HTTP API)
-# For production multi-user, use WebSocket sessions instead.
 _env: Optional[AuditEnvironment] = None
 
 
@@ -59,13 +58,6 @@ def _get_env() -> AuditEnvironment:
     if _env is None:
         _env = AuditEnvironment()
     return _env
-
-
-def _obs_to_dict(obs) -> Dict[str, Any]:
-    """Convert Observation to a serializable dict."""
-    if hasattr(obs, 'model_dump'):
-        return obs.model_dump()
-    return {"done": getattr(obs, 'done', False), "reward": getattr(obs, 'reward', None), "metadata": getattr(obs, 'metadata', {})}
 
 
 @app.get("/health")
@@ -82,12 +74,8 @@ async def reset(request: ResetRequest = Body(default_factory=ResetRequest)):
         episode_id=request.episode_id,
         task=request.task,
     )
-    d = _obs_to_dict(obs)
-    return EnvResponse(
-        observation=d.get("metadata", d),
-        reward=d.get("reward"),
-        done=d.get("done", False),
-    )
+    # OpenEnv core Observation has done, reward, metadata
+    return obs
 
 
 @app.post("/step")
@@ -99,21 +87,15 @@ async def step(request: StepRequest):
     action_data.pop("metadata", None)
 
     try:
-        action = AuditAction(**action_data)
+        obs = env.step(action_data)
     except Exception as e:
-        return EnvResponse(
-            observation={"error": f"Invalid action: {e}", "feedback": f"Invalid action: {e}"},
-            reward=-0.02,
-            done=False,
-        )
+        return {
+            "metadata": {"error": f"Failed to execute step: {e}", "feedback": str(e)},
+            "reward": -0.02,
+            "done": False,
+        }
 
-    obs = env.step(action)
-    d = _obs_to_dict(obs)
-    return EnvResponse(
-        observation=d.get("metadata", d),
-        reward=d.get("reward"),
-        done=d.get("done", False),
-    )
+    return obs
 
 
 @app.get("/state")
@@ -148,7 +130,7 @@ async def metadata():
 
 def main():
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":

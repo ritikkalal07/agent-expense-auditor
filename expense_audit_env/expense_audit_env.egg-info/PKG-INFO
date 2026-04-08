@@ -1,0 +1,211 @@
+Metadata-Version: 2.4
+Name: expense-audit-env
+Version: 0.1.0
+Summary: OpenEnv environment for corporate expense report auditing — trains AI agents to review expenses for policy compliance.
+License: BSD-3-Clause
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: openenv-core>=0.2.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn>=0.24.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: httpx>=0.24.0; extra == "dev"
+
+---
+title: Expense Audit Env
+emoji: 📊
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 7860
+---
+# Expense Audit Environment 🧾
+
+An [OpenEnv](https://github.com/meta-pytorch/OpenEnv) environment that simulates **corporate expense report auditing** — a genuine, high-value real-world task where an AI agent reviews employee expense submissions for policy compliance, flags violations, and issues structured audit verdicts.
+
+## Why Expense Auditing?
+
+Expense report fraud and policy non-compliance cost companies billions annually. Tools like SAP Concur, Brex, and Ramp rely on a combination of rule engines and human reviewers. This environment provides a structured setting for training and evaluating AI agents on this critical task.
+
+**Key properties:**
+- 📋 **Real-world utility** — Models a genuine business-critical task with immediate commercial value
+- 🎯 **Rich reward signal** — Partial credit for catching violations, penalties for false positives, efficiency bonuses
+- 📈 **Graduated difficulty** — 3 task tiers from obvious violations to sophisticated fraud patterns
+- 🔄 **Deterministic** — Seeded scenario generation for reproducible evaluations
+
+---
+
+## Environment Overview
+
+### Observation Space
+
+At each step, the agent receives:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `current_report` | `ExpenseReport` | Full expense report with line items |
+| `company_policy` | `List[PolicyRule]` | Active policy rules to check against |
+| `audit_history` | `List[str]` | Last 10 actions & results |
+| `flagged_items` | `List[str]` | Items flagged on current report |
+| `approved_items` | `List[str]` | Items approved on current report |
+| `reports_remaining` | `int` | Reports left to audit |
+| `feedback` | `str` | Feedback from last action |
+
+Each **ExpenseItem** includes: `item_id`, `date`, `category`, `vendor`, `amount`, `description`, `receipt_present`, `receipt_description`.
+
+### Action Space
+
+| Action | Required Fields | Description |
+|--------|----------------|-------------|
+| `flag_violation` | `item_id`, `violation_type`, `reason` | Flag a line item as a policy violation |
+| `approve_item` | `item_id`, `reason` | Approve a clean line item |
+| `approve_report` | `reason` | Issue approve verdict on current report |
+| `reject_report` | `reason` | Issue reject verdict on current report |
+| `request_info` | `item_id` (optional), `reason` | Request additional info (small penalty) |
+| `next_report` | `reason` | Skip to next report without verdict (penalty) |
+
+**Violation types:** `over_limit`, `missing_receipt`, `wrong_category`, `duplicate`, `policy_violation`, `suspicious_vendor`, `personal_expense`, `split_transaction`, `date_mismatch`
+
+### Reward Signal
+
+| Signal | Value | Description |
+|--------|-------|-------------|
+| Correct violation flag | +0.15 | Correctly identifies a policy violation |
+| Correct violation type | +0.15 | Flag + correct violation type |
+| Partial flag (wrong type) | +0.10 | Correct item flagged, wrong type |
+| Correct item approval | +0.05 | Correctly approves a clean item |
+| Correct report verdict | +0.10 | Approve/reject matches ground truth |
+| False positive flag | -0.10 | Flags a clean item |
+| Missed violation (approve) | -0.15 | Approves an item with a violation |
+| Incorrect verdict | -0.10 | Wrong approve/reject on report |
+| Invalid/malformed action | -0.02 | Bad format or unknown action |
+
+**Final score** (0.0–1.0) is a weighted composite:
+- 50% — Violation detection F1 (precision + recall)
+- 30% — Report verdict accuracy
+- 10% — Efficiency (fewer steps = higher bonus)
+- 10% — Violation type accuracy
+
+---
+
+## Tasks
+
+### Task 1: `basic_audit` (Easy) 🟢
+- **3 expense reports** with 3–5 line items each
+- **1–2 obvious violations** per report (e.g., $200 meal when limit is $75, missing receipt on $100 expense)
+- **5 simple policy rules**
+- Max 30 steps
+- **Expected frontier model score: ~0.85+**
+
+### Task 2: `standard_audit` (Medium) 🟡
+- **5 expense reports** with 5–8 line items each
+- **Mix of clean and violating items**, some subtle (duplicate submissions, weekend expenses, category mismatches)
+- **10 policy rules** with exceptions
+- Max 50 steps
+- **Expected frontier model score: ~0.60–0.75**
+
+### Task 3: `forensic_audit` (Hard) 🔴
+- **8 expense reports** with 6–12 line items each
+- **Sophisticated violations**: split transactions to avoid limits, vendor name variations, personal expenses disguised as business, receipt description mismatches
+- **17 policy rules** with department-specific exceptions and approval tiers
+- Max 80 steps
+- **Expected frontier model score: ~0.30–0.50**
+
+---
+
+## Setup & Usage
+
+### Prerequisites
+- Python 3.10+
+- Docker (for containerized execution)
+
+### Install locally
+
+```bash
+pip install -e .
+```
+
+### Run the server
+
+```bash
+# Direct
+uvicorn server.app:app --host 0.0.0.0 --port 7860
+
+# Or via module
+python -m server.app
+```
+
+### Run with Docker
+
+```bash
+docker build -t expense-audit-env .
+docker run -p 7860:7860 expense-audit-env
+```
+
+### Run baseline inference
+
+```bash
+export API_BASE_URL="https://api.openai.com/v1"
+export OPENAI_API_KEY="sk-..."
+export MODEL_NAME="gpt-4o-mini"
+export SPACE_URL="http://localhost:7860"
+
+python inference.py
+```
+
+### Interact via API
+
+```bash
+# Reset with a specific task
+curl -X POST http://localhost:7860/reset \
+  -H "Content-Type: application/json" \
+  -d '{"seed": 42, "task": "basic_audit"}'
+
+# Take an action
+curl -X POST http://localhost:7860/step \
+  -H "Content-Type: application/json" \
+  -d '{"action": {"action_type": "flag_violation", "item_id": "EXP-001", "violation_type": "over_limit", "reason": "Meal exceeds $75 limit"}}'
+```
+
+---
+
+## Baseline Scores
+
+| Task | Model | Score | Steps | Verdict Acc | Detection F1 |
+|------|-------|-------|-------|-------------|--------------|
+| basic_audit | gpt-4o-mini | ~0.72 | 15 | 0.67 | 0.80 |
+| standard_audit | gpt-4o-mini | ~0.55 | 30 | 0.60 | 0.65 |
+| forensic_audit | gpt-4o-mini | ~0.35 | 50 | 0.38 | 0.42 |
+
+*Scores are approximate and may vary with API versions.*
+
+---
+
+## Project Structure
+
+```
+expense_audit_env/
+├── openenv.yaml          # OpenEnv manifest
+├── pyproject.toml         # Package configuration
+├── models.py              # Pydantic models (Action, Observation, etc.)
+├── client.py              # EnvClient subclass
+├── __init__.py            # Package exports
+├── inference.py           # Baseline inference script
+├── Dockerfile             # Container image
+├── README.md              # This file
+└── server/
+    ├── app.py             # FastAPI application
+    ├── audit_environment.py  # Core environment logic
+    ├── scenarios.py       # Deterministic scenario generator
+    ├── graders.py         # Scoring and grading logic
+    ├── requirements.txt   # Server dependencies
+    └── Dockerfile         # Server Dockerfile (alt)
+```
+
+---
+
+## License
+
+BSD 3-Clause License

@@ -2,7 +2,7 @@
 import httpx
 import json
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:7860"
 
 # Health check
 r = httpx.get(f"{BASE}/health")
@@ -14,21 +14,21 @@ print(f"\nReset: {r.status_code}")
 data = r.json()
 print(f"Done: {data.get('done')}")
 print(f"Reward: {data.get('reward')}")
-obs = data.get('observation', {})
+# In OpenEnv standard, the observation data is in 'metadata'
+obs = data.get('metadata', {})
 print(f"Observation keys: {list(obs.keys()) if isinstance(obs, dict) else 'N/A'}")
-# Check if data is directly the observation or nested
-if 'metadata' in data:
-    meta = data['metadata']
-elif 'observation' in data and isinstance(data['observation'], dict):
-    meta = data['observation'].get('metadata', data['observation'])
-else:
-    meta = data
+
+meta = obs
 print(f"Feedback: {str(meta.get('feedback', ''))[:100]}")
 
 # Step
+# Try to find a real item id from the observation
+expenses = obs.get("current_report", {}).get("expenses", [])
+item_id = expenses[0].get("item_id", "EXP-000") if expenses else "EXP-000"
+
 action = {
     "action_type": "flag_violation",
-    "item_id": "EXP-000",
+    "item_id": item_id,
     "violation_type": "over_limit",
     "reason": "Amount exceeds limit",
 }

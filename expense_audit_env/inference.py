@@ -37,7 +37,7 @@ TASK_CONFIGS = {
     "forensic_audit": {"max_steps": 80, "max_total_reward": 8.0, "success_threshold": 0.3},
 }
 
-SPACE_URL = os.environ.get("SPACE_URL", "http://localhost:8000")
+SPACE_URL = os.environ.get("SPACE_URL", "http://localhost:7860")
 
 
 # ── Logging helpers ────────────────────────────────────────────────────────
