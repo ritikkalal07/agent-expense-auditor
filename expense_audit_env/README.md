@@ -1,10 +1,13 @@
 ---
-title: Expense Audit Env
-emoji: 📊
+title: Expense Audit Environment
+emoji: 🧾
 colorFrom: blue
-colorTo: red
+colorTo: blue
 sdk: docker
 app_port: 7860
+pinned: false
+tags:
+- openenv
 ---
 # Expense Audit Environment 🧾
 
