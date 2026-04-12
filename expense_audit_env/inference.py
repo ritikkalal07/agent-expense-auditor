@@ -47,17 +47,24 @@ def log_start(task: str, env: str, model: str) -> None:
 
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    # Ensure booleans are lowercase
+    done_str = "true" if done else "false"
+    error_str = error if error else "null"
     print(
-        f"[STEP] step={step} action={json.dumps(action) if isinstance(action, str) else json.dumps(str(action))} "
-        f"reward={reward:.4f} done={done} error={error}",
+        f"[STEP] step={step} action={action} "
+        f"reward={reward:.2f} done={done_str} error={error_str}",
         flush=True,
     )
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    # Ensure booleans are lowercase
+    success_str = "true" if success else "false"
+    # Format rewards as comma-separated list
+    rewards_str = ",".join([f"{r:.2f}" for r in rewards])
     print(
-        f"[END] success={success} steps={steps} score={score:.4f} "
-        f"rewards={json.dumps([round(r, 4) for r in rewards])}",
+        f"[END] success={success_str} steps={steps} score={score:.2f} "
+        f"rewards={rewards_str}",
         flush=True,
     )
 

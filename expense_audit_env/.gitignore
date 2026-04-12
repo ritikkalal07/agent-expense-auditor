@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.vscode/
+.idea/
+*.swp
+*.bak
+test_smoke.py
+test_http.py

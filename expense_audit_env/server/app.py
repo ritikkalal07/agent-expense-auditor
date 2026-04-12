@@ -66,25 +66,27 @@ async def health():
 
 
 @app.post("/reset")
-async def reset(request: ResetRequest = Body(default_factory=ResetRequest)):
+async def reset(request: Optional[ResetRequest] = None):
+    """OpenEnv standard reset endpoint."""
     global _env
+    if request is None:
+        request = ResetRequest()
     _env = AuditEnvironment()
     obs = _env.reset(
         seed=request.seed,
         episode_id=request.episode_id,
         task=request.task,
     )
-    # OpenEnv core Observation has done, reward, metadata
     return obs
 
 
 @app.post("/step")
 async def step(request: StepRequest):
+    """OpenEnv standard step endpoint."""
     env = _get_env()
     action_data = request.action
-
-    # Remove metadata key if present (base Action field)
-    action_data.pop("metadata", None)
+    if isinstance(action_data, dict):
+        action_data.pop("metadata", None)
 
     try:
         obs = env.step(action_data)
@@ -94,7 +96,6 @@ async def step(request: StepRequest):
             "reward": -0.02,
             "done": False,
         }
-
     return obs
 
 
