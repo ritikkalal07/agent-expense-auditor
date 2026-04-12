@@ -24,10 +24,12 @@ from openai import OpenAI
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-API_KEY = os.environ.get("OPENAI_API_KEY") or os.environ.get("HF_TOKEN", "")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-IMAGE_NAME = os.environ.get("IMAGE_NAME", "expense-audit-env:latest")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "expense_audit_env:latest")
+
+API_KEY = HF_TOKEN or os.getenv("OPENAI_API_KEY", "")
 BENCHMARK = "expense_audit_env"
 
 # Per-task configuration
@@ -37,7 +39,7 @@ TASK_CONFIGS = {
     "forensic_audit": {"max_steps": 80, "max_total_reward": 8.0, "success_threshold": 0.3},
 }
 
-SPACE_URL = os.environ.get("SPACE_URL", "http://localhost:7860")
+SPACE_URL = os.getenv("SPACE_URL", "http://localhost:7860")
 
 
 # ── Logging helpers ────────────────────────────────────────────────────────
@@ -50,8 +52,9 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     # Ensure booleans are lowercase
     done_str = "true" if done else "false"
     error_str = error if error else "null"
+    # Note: Double space after [STEP] for vertical field alignment as per spec
     print(
-        f"[STEP] step={step} action={action} "
+        f"[STEP]  step={step} action={action} "
         f"reward={reward:.2f} done={done_str} error={error_str}",
         flush=True,
     )
@@ -60,10 +63,11 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     # Ensure booleans are lowercase
     success_str = "true" if success else "false"
-    # Format rewards as comma-separated list
+    # Format rewards as comma-separated list with 2 decimal places
     rewards_str = ",".join([f"{r:.2f}" for r in rewards])
+    # Note: Triple space after [END] for vertical field alignment as per spec
     print(
-        f"[END] success={success_str} steps={steps} score={score:.2f} "
+        f"[END]   success={success_str} steps={steps} score={score:.2f} "
         f"rewards={rewards_str}",
         flush=True,
     )
