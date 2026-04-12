@@ -70,6 +70,15 @@ def _get_env() -> AuditEnvironment:
     return _env
 
 
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "environment": "Expense Audit Environment",
+        "api_docs": "/docs",
+        "tasks": ["basic_audit", "standard_audit", "forensic_audit"]
+    }
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
