@@ -392,36 +392,19 @@ class AuditEnvironment(Environment):
                 "task": self._task_name,
                 "seed": self._seed,
                 "episode_id": self._state.episode_id,
-            },
-            current_report=current_report,
-            company_policy=self._policy,
-            audit_history=self._audit_history[-10:],  # Last 10 entries
-            flagged_items=list(self._agent_flags.get(rid, {}).keys()) if rid else [],
-            approved_items=list(self._agent_approvals.get(rid, set())) if rid else [],
-            reports_remaining=len(self._reports) - self._current_report_idx - (0 if self._done else 1),
-            reports_completed=self._current_report_idx if not self._done else len(self._reports),
-            current_step=self._state.step_count,
-            max_steps=self._max_steps,
-            feedback=self._last_feedback,
-        )
-        # Return as base Observation type for serialization
-        return Observation(
-            done=obs.done,
-            reward=obs.reward,
-            metadata={
-                **obs.metadata,
-                "current_report": obs.current_report.model_dump() if obs.current_report else None,
-                "company_policy": [r.model_dump() for r in obs.company_policy],
-                "audit_history": obs.audit_history,
-                "flagged_items": obs.flagged_items,
-                "approved_items": obs.approved_items,
-                "reports_remaining": obs.reports_remaining,
-                "reports_completed": obs.reports_completed,
-                "current_step": obs.current_step,
-                "max_steps": obs.max_steps,
-                "feedback": obs.feedback,
+                "current_report": current_report.model_dump() if current_report else None,
+                "company_policy": [r.model_dump() for r in self._policy],
+                "audit_history": self._audit_history[-10:],
+                "flagged_items": list(self._agent_flags.get(rid, {}).keys()) if rid else [],
+                "approved_items": list(self._agent_approvals.get(rid, set())) if rid else [],
+                "reports_remaining": len(self._reports) - self._current_report_idx - (0 if self._done else 1),
+                "reports_completed": self._current_report_idx if not self._done else len(self._reports),
+                "current_step": self._state.step_count,
+                "max_steps": self._max_steps,
+                "feedback": self._last_feedback,
             },
         )
+        return obs
 
     @property
     def state(self) -> State:
