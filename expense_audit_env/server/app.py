@@ -15,7 +15,8 @@ from typing import Any, Dict, Optional
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from server.audit_environment import AuditEnvironment
@@ -44,9 +45,18 @@ class EnvResponse(BaseModel):
 # ── Application ────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Expense Audit Environment",
-    description="OpenEnv environment for corporate expense report auditing",
+    title="Expense Audit Environment API",
+    description="OpenEnv-compliant API for auditing corporate expense reports",
     version="0.1.0",
+)
+
+# Add CORS middleware for browser-based automated validators
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Stateful environment instance (per-server singleton for HTTP API)
@@ -77,7 +87,8 @@ async def reset(request: Optional[ResetRequest] = None):
         episode_id=request.episode_id,
         task=request.task,
     )
-    return obs
+    # Convert to dict to ensure serialized correctly
+    return obs.model_dump() if hasattr(obs, 'model_dump') else obs
 
 
 @app.post("/step")
@@ -96,7 +107,8 @@ async def step(request: StepRequest):
             "reward": -0.02,
             "done": False,
         }
-    return obs
+    # Convert to dict for maximum compatibility
+    return obs.model_dump() if hasattr(obs, 'model_dump') else obs
 
 
 @app.get("/state")
